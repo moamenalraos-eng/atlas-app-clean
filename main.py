@@ -7,27 +7,47 @@ import os
 import urllib.parse
 
 from groq import Groq
-from fastapi import FastAPI, Response
+ffrom fastapi import FastAPI, Response
+from pydantic import BaseModel
+import os
 
-app = FastAPI()
+app = FastAPI(title="Atlas AI Assistant")
 
-# ضع كود الـ HTML الخاص بك هنا بين علامات التنصيص الثلاثية
+# تعريفات النماذج عشان ما يحصلش خطأ NameError
+class MessageItem(BaseModel):
+    role: str
+    content: str
+
+class MessageRequest(BaseModel):
+    user_input: str
+    stream: bool = False
+    internet_access: bool = False
+    history: list[MessageItem] = []
+
+# صفحة الواجهة المباشرة
 HTML_CONTENT = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <title>Atlas AI Assistant</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; padding-top: 50px; }
+        .card { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h1 { color: #38bdf8; }
+    </style>
 </head>
 <body>
-    <h1>أهلاً بك في تطبيق أطلس الذكي!</h1>
-    <p>التطبيق يعمل الآن بكامل طاقته.</p>
+    <div class="card">
+        <h1>أهلاً بك في تطبيق أطلس الذكي!</h1>
+        <p>التطبيق يعمل الآن بكامل طاقته على سيرفر Railway 🚀</p>
+    </div>
 </body>
 </html>
 """
 
 @app.get("/")
-async def get_index():
+async def serve_frontend():
     return Response(content=HTML_CONTENT, media_type="text/html")
     index_file = "frontend/index.html"
     if os.path.exists(index_file):
