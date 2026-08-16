@@ -33,12 +33,19 @@ class ImagePrompt(BaseModel):
 
 @app.get("/")
 async def serve_frontend():
-    frontend_path = os.path.abspath("../frontend/index.html")
-    if not os.path.exists(frontend_path):
-        frontend_path = os.path.abspath("frontend/index.html")
+    # البحث المباشر عن ملف index.html في مجلد frontend بجانب مجلد التطبيق أو في نفس المستوى
+    paths_to_check = [
+        "frontend/index.html",
+        "../frontend/index.html",
+        "app/frontend/index.html",
+        "backend/frontend/index.html"
+    ]
     
-    if os.path.exists(frontend_path):
-        return FileResponse(frontend_path)
+    for path in paths_to_check:
+        full_path = os.path.abspath(path)
+        if os.path.exists(full_path):
+            return FileResponse(full_path)
+            
     return {"message": "Atlas AI Assistant - Frontend not found"}
 def perform_search(query: str) -> str:
     try:
