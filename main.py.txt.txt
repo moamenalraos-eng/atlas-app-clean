@@ -1,0 +1,25 @@
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+@app.get("/")
+async def read_root():
+    html_content = """
+    <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Atlas AI Mobile</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; text-align: center; padding-top: 50px; }
+                h1 { color: #38bdf8; }
+                p { color: #94a3b8; }
+            </style>
+        </head>
+        <body>
+            <h1>Atlas AI Assistant</h1>
+            <p>مرحباً بك يا مؤمن! تطبيقك يعمل بكفاءة على الموبايل.</p>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
