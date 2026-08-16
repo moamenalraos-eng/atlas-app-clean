@@ -33,7 +33,7 @@ class ImagePrompt(BaseModel):
 
 @app.get("/")
 async def serve_frontend():
-  frontend_path = os.path.abspath("../frontend/index.html")
+    frontend_path = os.path.abspath("../frontend/index.html")
     if not os.path.exists(frontend_path):
         frontend_path = os.path.abspath("frontend/index.html")
     
