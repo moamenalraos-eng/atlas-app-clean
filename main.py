@@ -7,37 +7,28 @@ import os
 import urllib.parse
 
 from groq import Groq
-from duckduckgo_search import DDGS
+from fastapi import FastAPI, Response
 
-app = FastAPI(title="Atlas AI Assistant")
+app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-class MessageItem(BaseModel):
-    role: str
-    content: str
-
-class MessageRequest(BaseModel):
-    user_input: str
-    stream: bool = False
-    internet_access: bool = False
-    history: list[MessageItem] = []
-
-class ImagePrompt(BaseModel):
-    prompt: str
-
-from fastapi.staticfiles import StaticFiles
-
-# أضف السطر ده تحت تعريف الـ app مباشرة (لو مش موجود):
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+# ضع كود الـ HTML الخاص بك هنا بين علامات التنصيص الثلاثية
+HTML_CONTENT = """
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Atlas AI Assistant</title>
+</head>
+<body>
+    <h1>أهلاً بك في تطبيق أطلس الذكي!</h1>
+    <p>التطبيق يعمل الآن بكامل طاقته.</p>
+</body>
+</html>
+"""
 
 @app.get("/")
-async def serve_frontend():
+async def get_index():
+    return Response(content=HTML_CONTENT, media_type="text/html")
     index_file = "frontend/index.html"
     if os.path.exists(index_file):
         return FileResponse(index_file)
