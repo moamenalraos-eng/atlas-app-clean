@@ -31,21 +31,16 @@ class MessageRequest(BaseModel):
 class ImagePrompt(BaseModel):
     prompt: str
 
+from fastapi.staticfiles import StaticFiles
+
+# أضف السطر ده تحت تعريف الـ app مباشرة (لو مش موجود):
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
 @app.get("/")
 async def serve_frontend():
-    # البحث المباشر عن ملف index.html في مجلد frontend بجانب مجلد التطبيق أو في نفس المستوى
-    paths_to_check = [
-        "frontend/index.html",
-        "../frontend/index.html",
-        "app/frontend/index.html",
-        "backend/frontend/index.html"
-    ]
-    
-    for path in paths_to_check:
-        full_path = os.path.abspath(path)
-        if os.path.exists(full_path):
-            return FileResponse(full_path)
-            
+    index_file = "frontend/index.html"
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
     return {"message": "Atlas AI Assistant - Frontend not found"}
 def perform_search(query: str) -> str:
     try:
