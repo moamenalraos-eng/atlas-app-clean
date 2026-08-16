@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas AI Assistant - مؤمن الجوكر</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #f1f5f9; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* الشريط الجانبي */
+        #sidebar { width: 280px; background: #111827; border-left: 1px solid #1f2937; padding: 20px; display: flex; flex-direction: column; flex-shrink: 0; }
+        #sidebar h2 { color: #3b82f6; margin-top: 0; font-size: 1.3rem; margin-bottom: 5px; }
+        .creator-tag { font-size: 0.85rem; color: #38bdf8; font-weight: bold; margin-bottom: 15px; }
+        .btn-clear { background: #ef4444; border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: auto; }
+        .btn-clear:hover { background: #dc2626; }
+
+        /* منطقة الشات الرئيسية */
+        #main-chat { flex: 1; display: flex; flex-direction: column; height: 100vh; background: #0f172a; position: relative; }
+        
+        /* خيارات التحكم علوية */
+        .controls { display: flex; gap: 20px; background: #1e293b; padding: 12px 20px; border-bottom: 1px solid #334155; align-items: center; font-size: 0.9rem; }
+        .controls label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+        /* صندوق الرسائل */
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; font-size: 0.95rem; word-wrap: break-word; }
+        .user { background: #2563eb; color: #fff; align-self: flex-end; border-bottom-left-radius: 2px; }
+        .ai { background: #1e293b; color: #e2e8f0; align-self: flex-start; border-bottom-right-radius: 2px; border: 1px solid #334155; }
+        
+        .typing { display: none; align-self: flex-start; color: #94a3b8; font-style: italic; font-size: 0.85rem; padding: 0 20px 10px; }
+        .img-result { max-width: 100%; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #334155; }
+
+        /* منطقة المدخلات أسفل الشاشة */
+        .input-container { padding: 15px 20px; background: #111827; border-top: 1px solid #1f2937; display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px 15px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #fff; outline: none; font-size: 0.95rem; }
+        input[type="text"]:focus { border-color: #2563eb; }
+        
+        .btn-send { padding: 12px 24px; background: #2563eb; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-send:hover { background: #1d4ed8; }
+        .btn-draw { padding: 12px 20px; background: #10b981; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-draw:hover { background: #059669; }
+    </style>
+</head>
+<body>
+
+    <div id="main-chat">
+        <div class="controls">
+            <label><input type="checkbox" id="internet_access"> بحث حقيقي بالإنترنت</label>
+            <label><input type="checkbox" id="speech_access" checked> نطق الردود تلقائياً</label>
+        </div>
+
+        <div id="chat-box"></div>
+        <div id="typing-indicator" class="typing">جاري التفكير والبحث...</div>
+
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="اكتب سؤالك أو وصف الصورة هنا..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <button class="btn-send" onclick="sendMessage()">إرسال</button>
+            <button class="btn-draw" onclick="generateImageDirect()">رسم صورة 🎨</button>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <h2>Atlas AI 🤖</h2>
+        <div class="creator-tag">تطوير: مؤمن الجوكر</div>
+        <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">المساعد الذكي الشخصي المطور بأحدث تقنيات الذكاء الاصطناعي.</p>
+        <button class="btn-clear" onclick="clearHistory()">مسح المحادثة</button>
+    </div>
+
+    <script>
+        let chatHistory = JSON.parse(localStorage.getItem('atlas_chat_history')) || [];
+
+        // استرجاع الرسائل المحفوظة عند فتح الصفحة
+        window.onload = () => {
+            const chatBox = document.getElementById('chat-box');
+            chatHistory.forEach(item => {
+                const senderClass = item.role === 'user' ? 'user' : 'ai';
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${senderClass}`;
+                msgDiv.innerHTML = `<div>${item.content}</div>`;
+                chatBox.appendChild(msgDiv);
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            let cleanText = text.replace(/[\*#_`~]/g, '').trim();
+            if (!cleanText) return;
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            const voices = window.speechSynthesis.getVoices();
+            
+            let arabicVoice = voices.find(v => 
+                v.lang.toLowerCase().includes('ar') || 
+                v.name.toLowerCase().includes('arabic')
+            );
+
+            if (arabicVoice) {
+                utterance.voice = arabicVoice;
+                utterance.lang = arabicVoice.lang;
+            } else {
+                utterance.lang = 'ar-EG';
+            }
+
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
+
+        function addMessageToChat(sender, message, imageUrl = null) {
+            const chatBox = document.getElementById('chat-box');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            
+            let htmlContent = `<div>${message}</div>`;
+            if (imageUrl) {
+                htmlContent += `<img src="${imageUrl}" class="img-result" alt="Generated Image" onerror="this.alt='تعذر تحميل الصورة، جرب مرة أخرى.';" />`;
+            }
+            
+            msgDiv.innerHTML = htmlContent;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // حفظ السجل في الـ LocalStorage
+            localStorage.setItem('atlas_chat_history', JSON.stringify(chatHistory));
+        }
+
+        function clearHistory() {
+            chatHistory = [];
+            localStorage.removeItem('atlas_chat_history');
+            document.getElementById('chat-box').innerHTML = '';
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById('user-input');
+            const userMessage = inputField.value.trim();
+            const internetAccess = document.getElementById('internet_access').checked;
+            const typingIndicator = document.getElementById('typing-indicator');
+
+            if (userMessage === "") return;
+
+            chatHistory.push({ role: 'user', content: userMessage });
+            addMessageToChat('user', userMessage);
+            inputField.value = "";
+            typingIndicator.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_input: userMessage,
+                        stream: false,
+                        internet_access: internetAccess,
+                        history: chatHistory.slice(0, -1)
+                    })
+                });
+
+                const data = await response.json();
+                typingIndicator.style.display = 'none';
+
+                chatHistory.push({ role: 'assistant', content: data.response });
+                addMessageToChat('ai', data.response, data.image_url || null);
+
+                const speechEnabled = document.getElementById('speech_access').checked;
+                if (speechEnabled && data.response) {
+                    speakText(data.response);
+                }
+            } catch (error) {
+                typingIndicator.style.display = 'none';
+                console.error('Error:', error);
+                addMessageToChat('ai', 'حدث خطأ في الاتصال بالسيرفر. حاول مرة أخرى.');
+            }
+        }
+
+        async function generateImageDirect() {
+            const inputField = document.getElementById('user-input');
+            const promptText = inputField.value.trim();
+            const typingIndicator = document.getElementById('typing-indicator');
+
+            if (!promptTest && !promptText) {
+                alert('يرجى كتابة وصف الصورة في خانة النص أولاً!');
+                return;
+            }
+
+            const currentPrompt = promptText;
+            chatHistory.push({ role: 'user', content: `طلب رسم: ${currentPrompt}` });
+            addMessageToChat('user', `طلب رسم: ${currentPrompt}`);
+            inputField.value = "";
+            typingIndicator.innerText = "جاري رسم الصورة...";
+            typingIndicator.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: currentPrompt })
+                });
+
+                const data = await response.json();
+                typingIndicator.style.display = 'none';
+                typingIndicator.innerText = "جاري التفكير والبحث...";
+
+                if (data.image_url) {
+                    const replyMsg = `إليك الصورة بناءً على طلبك: ${data.prompt}`;
+                    chatHistory.push({ role: 'assistant', content: replyMsg });
+                    addMessageToChat('ai', replyMsg, data.image_url);
+                    
+                    const speechEnabled = document.getElementById('speech_access').checked;
+                    if (speechEnabled) speakTest(replyMsg);
+                } else {
+                    addMessageToChat('ai', 'تعذر توليد الصورة، حاول مرة أخرى.');
+                }
+            } catch (error) {
+                typingIndicator.style.display = 'none';
+                typingIndicator.innerText = "جاري التفكير والبحث...";
+                addMessageToChat('ai', 'حدث خطأ في الاتصال بسيرفر الصور.');
+            }
+        }
+    </script>
+</body>
+</html>
