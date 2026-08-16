@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-groq
-duckduckgo_search
-pydantic
-pydantic-settings
-python-dotenv
